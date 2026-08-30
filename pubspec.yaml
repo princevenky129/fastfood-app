@@ -1,0 +1,27 @@
+name: fastfood_app
+description: Fast food ordering app — customer QR ordering + admin order queue.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  google_fonts: ^6.2.1      # typography (Space Grotesk / Inter / JetBrains Mono)
+  intl: ^0.19.0             # date grouping ("Today", "Aug 26, 2026")
+  image_picker: ^1.1.2     # admin gallery photo picker for food items
+  url_launcher: ^6.3.0     # UPI payment deep linking (upi://pay)
+  qr_flutter: ^4.1.0       # Scannable QR code generator for shop menu
+  http: ^1.2.1             # Cross-device real-time order sync
+  shared_preferences: ^2.2.2 # Local session & auth storage
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
