@@ -7,10 +7,9 @@ import 'menu_management_screen.dart';
 import 'order_queue_screen.dart';
 
 class AdminHome extends StatefulWidget {
-  final VoidCallback? onSwitchToCustomer;
   final VoidCallback? onLogout;
 
-  const AdminHome({super.key, this.onSwitchToCustomer, this.onLogout});
+  const AdminHome({super.key, this.onLogout});
 
   @override
   State<AdminHome> createState() => _AdminHomeState();
@@ -42,7 +41,6 @@ class _AdminHomeState extends State<AdminHome> {
       body: Column(
         children: [
           _TopBar(
-            onSwitchToCustomer: widget.onSwitchToCustomer,
             onLogout: widget.onLogout,
           ),
           Expanded(
@@ -73,10 +71,9 @@ class _AdminHomeState extends State<AdminHome> {
 // ============================================================================
 
 class _TopBar extends StatelessWidget {
-  final VoidCallback? onSwitchToCustomer;
   final VoidCallback? onLogout;
 
-  const _TopBar({this.onSwitchToCustomer, this.onLogout});
+  const _TopBar({this.onLogout});
 
   void _showShopQr(BuildContext context) {
     showDialog(
@@ -250,47 +247,6 @@ class _TopBar extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(width: 6),
-
-              // Switch to Customer Mode Button
-              if (onSwitchToCustomer != null)
-                GestureDetector(
-                  onTap: onSwitchToCustomer,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x15000000),
-                          blurRadius: 6,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.smartphone_rounded,
-                          size: 14,
-                          color: AppColors.brandRed,
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          'Customer',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.brandRed,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
 
               if (onLogout != null) ...[
                 const SizedBox(width: 6),

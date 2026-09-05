@@ -475,6 +475,13 @@ class _CustomerHomeState extends State<CustomerHome> {
           ),
           const SizedBox(width: 8),
           _CustomerCatChip(
+            label: 'Gobi',
+            icon: Icons.dinner_dining_rounded,
+            isSelected: _selectedCategory == MenuCategory.gobi,
+            onTap: () => setState(() => _selectedCategory = MenuCategory.gobi),
+          ),
+          const SizedBox(width: 8),
+          _CustomerCatChip(
             label: 'Kabab',
             icon: Icons.kebab_dining_rounded,
             isSelected: _selectedCategory == MenuCategory.kabab,
@@ -486,13 +493,6 @@ class _CustomerHomeState extends State<CustomerHome> {
             icon: Icons.local_drink_rounded,
             isSelected: _selectedCategory == MenuCategory.softDrinks,
             onTap: () => setState(() => _selectedCategory = MenuCategory.softDrinks),
-          ),
-          const SizedBox(width: 8),
-          _CustomerCatChip(
-            label: 'Gobi',
-            icon: Icons.dinner_dining_rounded,
-            isSelected: _selectedCategory == MenuCategory.gobi,
-            onTap: () => setState(() => _selectedCategory = MenuCategory.gobi),
           ),
         ],
       ),

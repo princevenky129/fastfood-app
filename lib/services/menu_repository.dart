@@ -67,9 +67,23 @@ class MenuRepository {
         }
 
         if (remoteMenu.isNotEmpty) {
-          _menu.clear();
-          _menu.addAll(remoteMenu);
-          _emit();
+          // If remote had only old partial data (< 20 items), merge with full seedMenu
+          if (remoteMenu.length < 20) {
+            final existingIds = remoteMenu.map((i) => i.id).toSet();
+            for (final seedItem in seedMenu) {
+              if (!existingIds.contains(seedItem.id)) {
+                remoteMenu.add(seedItem);
+              }
+            }
+            _menu.clear();
+            _menu.addAll(remoteMenu);
+            _emit();
+            _pushFullMenuToCloud();
+          } else {
+            _menu.clear();
+            _menu.addAll(remoteMenu);
+            _emit();
+          }
         } else {
           // If remote is empty, push seedMenu to initialize cloud
           _pushFullMenuToCloud();

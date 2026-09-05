@@ -18,7 +18,6 @@ class FastFoodApp extends StatefulWidget {
 }
 
 class _FastFoodAppState extends State<FastFoodApp> {
-  bool _isCustomerMode = true; // Default to Customer Experience
   bool _isLoggedIn = false;
   bool _isCheckingAuth = true;
 
@@ -30,7 +29,7 @@ class _FastFoodAppState extends State<FastFoodApp> {
 
   Future<void> _checkAuthStatus() async {
     if (kIsWeb) {
-      // On web, customers directly place orders without needing mobile login
+      // On web (Vercel deployment), customers directly browse menu and order
       setState(() {
         _isLoggedIn = true;
         _isCheckingAuth = false;
@@ -65,28 +64,18 @@ class _FastFoodAppState extends State<FastFoodApp> {
                 child: CircularProgressIndicator(color: Color(0xFFFF6B00)),
               ),
             )
-          : !_isLoggedIn
-              ? AuthScreen(
-                  onLoginSuccess: () => setState(() => _isLoggedIn = true),
+          : kIsWeb
+              ? const CustomerHome(
+                  key: ValueKey('CustomerHomeWeb'),
                 )
-              : AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  transitionBuilder: (child, animation) => FadeTransition(
-                    opacity: animation,
-                    child: child,
-                  ),
-                  child: _isCustomerMode
-                      ? CustomerHome(
-                          key: const ValueKey('CustomerHome'),
-                          onSwitchToAdmin: () => setState(() => _isCustomerMode = false),
-                          onLogout: _handleLogout,
-                        )
-                      : AdminHome(
-                          key: const ValueKey('AdminHome'),
-                          onSwitchToCustomer: () => setState(() => _isCustomerMode = true),
-                          onLogout: _handleLogout,
-                        ),
-                ),
+              : !_isLoggedIn
+                  ? AuthScreen(
+                      onLoginSuccess: () => setState(() => _isLoggedIn = true),
+                    )
+                  : AdminHome(
+                      key: const ValueKey('AdminHome'),
+                      onLogout: _handleLogout,
+                    ),
     );
   }
 }

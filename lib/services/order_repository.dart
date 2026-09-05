@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 import 'package:http/http.dart' as http;
-import '../models/menu_item.dart';
 import '../models/order.dart';
 
 class OrderRepository {
@@ -10,8 +8,6 @@ class OrderRepository {
       'https://fastfood-app-venky-7894e-default-rtdb.asia-southeast1.firebasedatabase.app';
 
   OrderRepository._internal() {
-    _orders.addAll(_seedOrders());
-    _controller.add(List.unmodifiable(_orders));
     _startCloudSync();
   }
 
@@ -19,7 +15,7 @@ class OrderRepository {
 
   final List<FoodOrder> _orders = [];
   final _controller = StreamController<List<FoodOrder>>.broadcast();
-  int _tokenCounter = 6;
+  int _tokenCounter = 0;
   bool _isSyncing = false;
 
   List<FoodOrder> get allOrders => List.unmodifiable(_orders);
@@ -31,7 +27,7 @@ class OrderRepository {
     // Initial fetch from cloud
     _fetchFromCloud();
 
-    // Poll every 2 seconds for instant cross-device updates
+    // Poll every 2 seconds for instant cross-device updates (App & Web)
     Timer.periodic(const Duration(seconds: 2), (_) {
       _fetchFromCloud();
     });
@@ -70,7 +66,7 @@ class OrderRepository {
             }
           }
 
-          // Update token counter if remote token counter is higher
+          // Update token counter strictly to highest token number found
           final maxToken = _orders.fold<int>(
               0, (maxVal, o) => o.tokenNumber > maxVal ? o.tokenNumber : maxVal);
           if (maxToken > _tokenCounter) {
@@ -115,7 +111,8 @@ class OrderRepository {
     _pushToCloud(order);
   }
 
-  /// Used by customer flow to push a freshly placed order in.
+  /// Used by customer flow on web/mobile to push a freshly placed order in.
+  /// Tokens increment sequentially: P1, P2, P3... Pn
   FoodOrder submitOrder(List<OrderLineItem> items, PaymentMethod method) {
     _tokenCounter += 1;
     final newOrder = FoodOrder(
@@ -134,56 +131,13 @@ class OrderRepository {
     return newOrder;
   }
 
-  void simulateIncomingOrder() {
-    final rand = Random();
-    final picks = (List.of(seedMenu)..shuffle(rand)).take(1 + rand.nextInt(2));
-    final items = picks
-        .map((m) => OrderLineItem(
-              menuItemId: m.id,
-              name: m.name,
-              price: m.price,
-              quantity: 1 + rand.nextInt(2),
-            ))
-        .toList();
-    final method = rand.nextBool() ? PaymentMethod.upi : PaymentMethod.cash;
-    submitOrder(items, method);
-  }
-
-  List<FoodOrder> _seedOrders() {
-    final now = DateTime.now();
-    return [
-      FoodOrder(
-        id: 'o1',
-        tokenNumber: 1,
-        items: const [
-          OrderLineItem(
-              menuItemId: 'm6', name: 'Chicken Fried Rice', price: 100, quantity: 2),
-        ],
-        placedAt: now.subtract(const Duration(minutes: 6)),
-        method: PaymentMethod.upi,
-      ),
-      FoodOrder(
-        id: 'o2',
-        tokenNumber: 2,
-        items: const [
-          OrderLineItem(
-              menuItemId: 'm5', name: 'Gobi Manchurian', price: 60, quantity: 1),
-          OrderLineItem(
-              menuItemId: 'm3', name: 'Veg Fried Rice', price: 50, quantity: 1),
-        ],
-        placedAt: now.subtract(const Duration(minutes: 4)),
-        method: PaymentMethod.cash,
-      ),
-      FoodOrder(
-        id: 'o3',
-        tokenNumber: 3,
-        items: const [
-          OrderLineItem(
-              menuItemId: 'm2', name: 'Egg Noodles', price: 60, quantity: 3),
-        ],
-        placedAt: now.subtract(const Duration(minutes: 2)),
-        method: PaymentMethod.upi,
-      ),
-    ];
+  /// Utility to clear old test orders from Firebase and reset tokens to 0
+  Future<void> clearAllOrders() async {
+    _orders.clear();
+    _tokenCounter = 0;
+    _emit();
+    try {
+      await http.delete(Uri.parse('$_dbBaseUrl/orders.json'));
+    } catch (_) {}
   }
 }

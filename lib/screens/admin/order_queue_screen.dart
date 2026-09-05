@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -30,6 +31,77 @@ class _OrderQueueScreenState extends State<OrderQueueScreen>
     super.dispose();
   }
 
+  void _confirmClearOrders(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            const Icon(Icons.delete_sweep_rounded, color: AppColors.danger),
+            const SizedBox(width: 10),
+            Text(
+              'Reset Orders Database?',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'This will purge all previous orders and reset the token counter back to P1 for a clean start. This cannot be undone.',
+          style: GoogleFonts.inter(color: AppColors.textSecondary, height: 1.5),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.inter(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _repo.clearAllOrders();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Order history cleared! Next order starts at P1.',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                  ),
+                  backgroundColor: AppColors.paid,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text(
+              'Clear All',
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<FoodOrder>>(
@@ -44,13 +116,14 @@ class _OrderQueueScreenState extends State<OrderQueueScreen>
         final completed = orders
             .where((o) => o.stage == OrderStage.completed)
             .toList()
-          ..sort((a, b) => b.completedAt!.compareTo(a.completedAt!));
+          ..sort((a, b) => (b.completedAt ?? b.placedAt)
+              .compareTo(a.completedAt ?? a.placedAt));
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(active.length),
-            _buildPillTabBar(),
+            _buildHeader(active.length, onClear: () => _confirmClearOrders(context)),
+            _buildPillTabBar(active.length, completed.length),
             Expanded(
               child: TabBarView(
                 controller: _tabController,
@@ -70,9 +143,9 @@ class _OrderQueueScreenState extends State<OrderQueueScreen>
   // HEADER
   // ------------------------------------------------------------------
 
-  Widget _buildHeader(int activeCount) {
+  Widget _buildHeader(int activeCount, {required VoidCallback onClear}) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -141,45 +214,47 @@ class _OrderQueueScreenState extends State<OrderQueueScreen>
               ),
             ),
 
-            // Demo simulate button
-            GestureDetector(
-              onTap: _repo.simulateIncomingOrder,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            // Options popup (e.g. clear order history)
+            PopupMenuButton<String>(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.brandRed, AppColors.brandOrange],
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.brandRed.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+                  color: AppColors.surfaceWarm,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.divider),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.add_circle_outline_rounded,
-                      size: 15,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      'Simulate',
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
+                child: const Icon(
+                  Icons.more_vert_rounded,
+                  size: 18,
+                  color: AppColors.textSecondary,
                 ),
               ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              onSelected: (val) {
+                if (val == 'clear') onClear();
+              },
+              itemBuilder: (ctx) => [
+                PopupMenuItem(
+                  value: 'clear',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.delete_outline_rounded,
+                          size: 18, color: AppColors.danger),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Reset Order Database',
+                        style: GoogleFonts.inter(
+                          color: AppColors.danger,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -191,7 +266,7 @@ class _OrderQueueScreenState extends State<OrderQueueScreen>
   // PILL TAB BAR
   // ------------------------------------------------------------------
 
-  Widget _buildPillTabBar() {
+  Widget _buildPillTabBar(int activeCount, int completedCount) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Container(
@@ -201,32 +276,39 @@ class _OrderQueueScreenState extends State<OrderQueueScreen>
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.divider),
         ),
+        padding: const EdgeInsets.all(4),
         child: TabBar(
           controller: _tabController,
+          indicatorSize: TabBarIndicatorSize.tab,
           indicator: BoxDecoration(
             gradient: const LinearGradient(
               colors: [AppColors.brandRed, AppColors.brandOrange],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(13),
+            borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
                 color: AppColors.brandRed.withValues(alpha: 0.35),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
-          indicatorSize: TabBarIndicatorSize.tab,
-          dividerColor: Colors.transparent,
           labelColor: Colors.white,
           unselectedLabelColor: AppColors.textSecondary,
-          labelStyle: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w700),
-          unselectedLabelStyle:
-              GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
-          padding: const EdgeInsets.all(4),
-          tabs: const [
-            Tab(text: 'Active Queue'),
-            Tab(text: 'Completed History'),
+          labelStyle: GoogleFonts.poppins(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+          unselectedLabelStyle: GoogleFonts.inter(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+          dividerColor: Colors.transparent,
+          tabs: [
+            Tab(text: 'Active ($activeCount)'),
+            Tab(text: 'Completed ($completedCount)'),
           ],
         ),
       ),
@@ -250,8 +332,7 @@ class _ActiveList extends StatelessWidget {
       return const _EmptyState(
         icon: Icons.ramen_dining_outlined,
         title: 'No active orders',
-        subtitle:
-            'New customer orders will pop up here instantly!',
+        subtitle: 'New customer orders will pop up here instantly!',
       );
     }
     return ListView.builder(
@@ -274,7 +355,7 @@ class _ActiveList extends StatelessWidget {
 }
 
 // ============================================================================
-// COMPLETED LIST
+// COMPLETED LIST (Hierarchical: Month → Week → Active Days Only)
 // ============================================================================
 
 class _CompletedList extends StatelessWidget {
@@ -287,139 +368,424 @@ class _CompletedList extends StatelessWidget {
     if (orders.isEmpty) {
       return const _EmptyState(
         icon: Icons.checklist_rounded,
-        title: 'Nothing completed yet',
-        subtitle: 'Orders you fulfill will appear here grouped by day.',
+        title: 'No completed orders yet',
+        subtitle: 'Orders fulfilled in the kitchen will appear here organized by week and date.',
       );
     }
 
-    final Map<String, List<FoodOrder>> grouped = {};
+    final totalRevenue = orders.fold<double>(0, (sum, o) => sum + o.total);
+
+    // Structure:
+    // monthKey -> weekKey -> dayKey -> List<FoodOrder>
+    final Map<String, Map<String, Map<String, List<FoodOrder>>>> grouped = {};
+
     for (final o in orders) {
-      final key = DateFormat('yyyy-MM-dd').format(o.completedAt!);
-      grouped.putIfAbsent(key, () => []).add(o);
+      final dt = o.completedAt ?? o.placedAt;
+      final monthKey = DateFormat('MMMM yyyy').format(dt);
+
+      // Calculate week in month (1..5)
+      final weekNum = ((dt.day - 1) ~/ 7) + 1;
+      final startDay = (weekNum - 1) * 7 + 1;
+      final lastDayOfMonth = DateTime(dt.year, dt.month + 1, 0).day;
+      final endDay = min(weekNum * 7, lastDayOfMonth);
+      final monthShort = DateFormat('MMM').format(dt);
+      final weekKey = 'Week $weekNum ($monthShort $startDay - $endDay)';
+
+      final dayKey = DateFormat('yyyy-MM-dd').format(dt);
+
+      grouped
+          .putIfAbsent(monthKey, () => {})
+          .putIfAbsent(weekKey, () => {})
+          .putIfAbsent(dayKey, () => [])
+          .add(o);
     }
-    final sortedKeys = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
 
-    return ListView.builder(
+    final monthKeys = grouped.keys.toList();
+
+    return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 100),
-      itemCount: sortedKeys.length,
-      itemBuilder: (context, i) {
-        final key = sortedKeys[i];
-        final dayOrders = grouped[key]!;
-        final date = DateTime.parse(key);
-        final revenue =
-            dayOrders.fold<double>(0, (sum, o) => sum + o.total);
+      children: [
+        // Overall Revenue Summary Banner
+        Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF2E7D32).withValues(alpha: 0.25),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'TOTAL COMPLETED REVENUE',
+                    style: GoogleFonts.poppins(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white70,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '₹${totalRevenue.toStringAsFixed(0)}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.20),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.receipt_long_rounded,
+                        color: Colors.white, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${orders.length} Orders',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
 
-        return _DateGroup(
-          label: _dateLabel(date),
-          count: dayOrders.length,
-          revenue: revenue,
-          initiallyExpanded: i == 0,
-          children: dayOrders
+        // Months List
+        ...monthKeys.map((monthKey) {
+          final weeksMap = grouped[monthKey]!;
+          final monthOrders = weeksMap.values
+              .expand((dayMap) => dayMap.values.expand((list) => list))
+              .toList();
+          final monthRevenue =
+              monthOrders.fold<double>(0, (sum, o) => sum + o.total);
+
+          return _MonthGroup(
+            monthTitle: monthKey,
+            orderCount: monthOrders.length,
+            revenue: monthRevenue,
+            weeksMap: weeksMap,
+          );
+        }),
+      ],
+    );
+  }
+}
+
+// ============================================================================
+// MONTH GROUP WIDGET
+// ============================================================================
+
+class _MonthGroup extends StatelessWidget {
+  final String monthTitle;
+  final int orderCount;
+  final double revenue;
+  final Map<String, Map<String, List<FoodOrder>>> weeksMap;
+
+  const _MonthGroup({
+    required this.monthTitle,
+    required this.orderCount,
+    required this.revenue,
+    required this.weeksMap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final sortedWeekKeys = weeksMap.keys.toList()
+      ..sort((a, b) => b.compareTo(a));
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.divider),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0C000000),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: true,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          leading: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [AppColors.brandRed, AppColors.brandOrange],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.calendar_month_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          title: Text(
+            monthTitle,
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          subtitle: Text(
+            '$orderCount orders • ₹${revenue.toStringAsFixed(0)}',
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          children: sortedWeekKeys.map((weekKey) {
+            final daysMap = weeksMap[weekKey]!;
+            final weekOrders =
+                daysMap.values.expand((list) => list).toList();
+            final weekRevenue =
+                weekOrders.fold<double>(0, (sum, o) => sum + o.total);
+
+            return _WeekGroup(
+              weekTitle: weekKey,
+              orderCount: weekOrders.length,
+              revenue: weekRevenue,
+              daysMap: daysMap,
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// WEEK GROUP WIDGET
+// ============================================================================
+
+class _WeekGroup extends StatelessWidget {
+  final String weekTitle;
+  final int orderCount;
+  final double revenue;
+  final Map<String, List<FoodOrder>> daysMap;
+
+  const _WeekGroup({
+    required this.weekTitle,
+    required this.orderCount,
+    required this.revenue,
+    required this.daysMap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Sort days newest date first
+    final sortedDayKeys = daysMap.keys.toList()
+      ..sort((a, b) => b.compareTo(a));
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceWarm,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: true,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          leading: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.divider),
+            ),
+            child: const Icon(
+              Icons.date_range_rounded,
+              color: AppColors.brandOrange,
+              size: 16,
+            ),
+          ),
+          title: Text(
+            weekTitle,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          subtitle: Row(
+            children: [
+              Text(
+                '$orderCount orders',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.paidBg,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '₹${revenue.toStringAsFixed(0)}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.paid,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+          children: sortedDayKeys.map((dayKey) {
+            final dayOrders = daysMap[dayKey]!;
+            final dayDate = DateTime.parse(dayKey);
+            final dayRevenue =
+                dayOrders.fold<double>(0, (sum, o) => sum + o.total);
+
+            return _DayGroup(
+              date: dayDate,
+              count: dayOrders.length,
+              revenue: dayRevenue,
+              orders: dayOrders,
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// DAY GROUP WIDGET (Displays ONLY if orders came on this day!)
+// ============================================================================
+
+class _DayGroup extends StatelessWidget {
+  final DateTime date;
+  final int count;
+  final double revenue;
+  final List<FoodOrder> orders;
+
+  const _DayGroup({
+    required this.date,
+    required this.count,
+    required this.revenue,
+    required this.orders,
+  });
+
+  String _formatDayLabel(DateTime dt) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final target = DateTime(dt.year, dt.month, dt.day);
+    final diff = today.difference(target).inDays;
+
+    if (diff == 0) return 'Today • ${DateFormat('EEEE, MMM d').format(dt)}';
+    if (diff == 1) return 'Yesterday • ${DateFormat('EEEE, MMM d').format(dt)}';
+    return DateFormat('EEEE, MMM d').format(dt);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.divider),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: false,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+          title: Text(
+            _formatDayLabel(date),
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          subtitle: Row(
+            children: [
+              Text(
+                '$count orders',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.paidBg,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '₹${revenue.toStringAsFixed(0)}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.paid,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+          children: orders
               .map((o) => OrderChitCard(
                     key: ValueKey(o.id),
                     order: o,
                     compact: true,
                   ))
               .toList(),
-        );
-      },
-    );
-  }
-
-  String _dateLabel(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final target = DateTime(date.year, date.month, date.day);
-    final diff = today.difference(target).inDays;
-    if (diff == 0) return 'Today';
-    if (diff == 1) return 'Yesterday';
-    return DateFormat('EEEE, MMM d').format(date);
-  }
-}
-
-// ============================================================================
-// DATE GROUP
-// ============================================================================
-
-class _DateGroup extends StatelessWidget {
-  final String label;
-  final int count;
-  final double revenue;
-  final bool initiallyExpanded;
-  final List<Widget> children;
-
-  const _DateGroup({
-    required this.label,
-    required this.count,
-    required this.revenue,
-    required this.children,
-    this.initiallyExpanded = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x10000000),
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        clipBehavior: Clip.antiAlias,
-        child: Theme(
-          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-          child: ExpansionTile(
-            initiallyExpanded: initiallyExpanded,
-            tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            title: Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            subtitle: Row(
-              children: [
-                Text(
-                  '$count orders',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.paidBg,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '₹${revenue.toStringAsFixed(0)}',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.paid,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            iconColor: AppColors.textSecondary,
-            collapsedIconColor: AppColors.textFaint,
-            childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            children: children,
-          ),
         ),
       ),
     );

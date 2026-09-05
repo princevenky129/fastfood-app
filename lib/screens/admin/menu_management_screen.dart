@@ -360,7 +360,17 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
           ),
           const SizedBox(width: 8),
 
-          // 3. Kabab
+          // 3. Gobi
+          _CategoryChip(
+            label: MenuCategory.gobi.displayName,
+            icon: Icons.dinner_dining_rounded,
+            count: _countForCategory(items, MenuCategory.gobi),
+            isSelected: _selectedCategory == MenuCategory.gobi,
+            onTap: () => setState(() => _selectedCategory = MenuCategory.gobi),
+          ),
+          const SizedBox(width: 8),
+
+          // 4. Kabab
           _CategoryChip(
             label: MenuCategory.kabab.displayName,
             icon: Icons.kebab_dining_rounded,
@@ -370,23 +380,13 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
           ),
           const SizedBox(width: 8),
 
-          // 4. Soft Drinks
+          // 5. Soft Drinks
           _CategoryChip(
             label: MenuCategory.softDrinks.displayName,
             icon: Icons.local_drink_rounded,
             count: _countForCategory(items, MenuCategory.softDrinks),
             isSelected: _selectedCategory == MenuCategory.softDrinks,
             onTap: () => setState(() => _selectedCategory = MenuCategory.softDrinks),
-          ),
-          const SizedBox(width: 8),
-
-          // 5. Gobi
-          _CategoryChip(
-            label: MenuCategory.gobi.displayName,
-            icon: Icons.dinner_dining_rounded,
-            count: _countForCategory(items, MenuCategory.gobi),
-            isSelected: _selectedCategory == MenuCategory.gobi,
-            onTap: () => setState(() => _selectedCategory = MenuCategory.gobi),
           ),
         ],
       ),
