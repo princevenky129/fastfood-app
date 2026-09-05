@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../models/order.dart';
 import '../../services/order_repository.dart';
 import '../../theme/app_colors.dart';
@@ -23,30 +22,12 @@ class _CheckoutModalState extends State<CheckoutModal> {
   PaymentMethod _selectedMethod = PaymentMethod.upi;
   bool _isSubmitting = false;
 
-  static const String shopUpiId = '8904629757@ptyes';
-
   double get _totalAmount {
     return widget.cartItems.values
         .fold(0.0, (sum, item) => sum + item.lineTotal);
   }
 
-  Future<void> _triggerUpiDeepLink(double amount) async {
-    const payeeName = 'FastFood Counter';
-    final amountStr = amount.toStringAsFixed(2);
 
-    final upiUrl =
-        'upi://pay?pa=$shopUpiId&pn=${Uri.encodeComponent(payeeName)}&am=$amountStr&cu=INR&tn=${Uri.encodeComponent("FastFood Order Payment")}';
-    final uri = Uri.parse(upiUrl);
-
-    try {
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!launched) {
-        // Fallback for non-UPI devices or emulators
-      }
-    } catch (_) {
-      // Ignored
-    }
-  }
 
   Future<void> _placeOrder() async {
     if (widget.cartItems.isEmpty || _isSubmitting) return;
@@ -55,11 +36,6 @@ class _CheckoutModalState extends State<CheckoutModal> {
 
     final items = widget.cartItems.values.toList();
     final repo = OrderRepository.instance;
-
-    // If UPI selected, trigger UPI deep link to GPay / PhonePe / Paytm
-    if (_selectedMethod == PaymentMethod.upi) {
-      await _triggerUpiDeepLink(_totalAmount);
-    }
 
     // Submit order to shared kitchen queue & return created order
     final newOrder = await repo.submitOrder(items, _selectedMethod);
@@ -256,8 +232,8 @@ class _CheckoutModalState extends State<CheckoutModal> {
               // 1. UPI Payment Option (Linked to 8904629757@ptyes)
               Expanded(
                 child: _PaymentOptionTile(
-                  title: 'UPI Payment',
-                  subtitle: 'PhonePe / GPay / Paytm',
+                  title: 'UPI (Scan QR)',
+                  subtitle: 'Pay at Counter QR',
                   icon: Icons.qr_code_2_rounded,
                   isSelected: _selectedMethod == PaymentMethod.upi,
                   onTap: () => setState(() => _selectedMethod = PaymentMethod.upi),
@@ -294,7 +270,7 @@ class _CheckoutModalState extends State<CheckoutModal> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'Redirecting to UPI ($shopUpiId) on checkout',
+                      'Pay via UPI at counter — Scan shop QR to pay',
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -354,9 +330,7 @@ class _CheckoutModalState extends State<CheckoutModal> {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  _selectedMethod == PaymentMethod.upi
-                                      ? 'Pay via UPI • ₹${_totalAmount.toStringAsFixed(0)}'
-                                      : 'Place Order • ₹${_totalAmount.toStringAsFixed(0)}',
+                                  'Place Order • ₹${_totalAmount.toStringAsFixed(0)}',
                                   style: GoogleFonts.poppins(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w800,

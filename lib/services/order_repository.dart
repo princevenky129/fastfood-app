@@ -93,15 +93,16 @@ class OrderRepository {
     _pushToCloud(order);
   }
 
-  void toggleCashPaid(String orderId) {
+  void togglePaymentStatus(String orderId) {
     final order = _orders.firstWhere((o) => o.id == orderId);
-    if (order.method != PaymentMethod.cash) return;
     order.status = order.status == PaymentStatus.paid
-        ? PaymentStatus.pendingUpi
+        ? PaymentStatus.pending
         : PaymentStatus.paid;
     _emit();
     _pushToCloud(order);
   }
+
+  void toggleCashPaid(String orderId) => togglePaymentStatus(orderId);
 
   /// Calculates the next sequential token strictly for TODAY (P1, P2, P3...).
   /// Automatically resets to P1 on each new calendar date.

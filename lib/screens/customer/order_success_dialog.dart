@@ -138,19 +138,19 @@ class OrderSuccessDialog extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    isCash ? Icons.money_rounded : Icons.check_circle_rounded,
+                    isCash ? Icons.money_rounded : Icons.qr_code_2_rounded,
                     size: 16,
-                    color: isCash ? AppColors.pending : AppColors.paid,
+                    color: AppColors.pending,
                   ),
                   const SizedBox(width: 8),
                   Text(
                     isCash
                         ? 'Pay ₹${order.total.toStringAsFixed(0)} Cash at Counter'
-                        : 'UPI Payment Confirmed (₹${order.total.toStringAsFixed(0)})',
+                        : 'Pay ₹${order.total.toStringAsFixed(0)} via UPI — Scan QR at Counter',
                     style: GoogleFonts.poppins(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: isCash ? AppColors.pending : AppColors.paid,
+                      color: AppColors.pending,
                     ),
                   ),
                 ],

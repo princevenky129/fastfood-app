@@ -21,29 +21,23 @@ class OrderChitCard extends StatelessWidget {
 
   Color get _statusColor {
     if (order.stage == OrderStage.completed) return AppColors.textFaint;
-    if (order.method == PaymentMethod.cash) {
-      return order.status == PaymentStatus.paid
-          ? AppColors.cash
-          : AppColors.pending;
-    }
-    return AppColors.paid; // UPI shows paid once placed
+    return order.status == PaymentStatus.paid
+        ? AppColors.paid
+        : AppColors.pending;
   }
 
   Color get _statusBgColor {
     if (order.stage == OrderStage.completed) return AppColors.surfaceWarm;
-    if (order.method == PaymentMethod.cash) {
-      return order.status == PaymentStatus.paid
-          ? AppColors.cashBg
-          : AppColors.pendingBg;
-    }
-    return AppColors.paidBg;
+    return order.status == PaymentStatus.paid
+        ? AppColors.paidBg
+        : AppColors.pendingBg;
   }
 
   String get _statusLabel {
     if (order.method == PaymentMethod.cash) {
       return order.status == PaymentStatus.paid ? 'Cash · Paid' : 'Cash · Pending';
     }
-    return 'UPI · Paid';
+    return order.status == PaymentStatus.paid ? 'UPI · Verified' : 'UPI · Verify Pending';
   }
 
   IconData get _statusIcon {
@@ -53,20 +47,22 @@ class OrderChitCard extends StatelessWidget {
           ? Icons.payments_rounded
           : Icons.hourglass_top_rounded;
     }
-    return Icons.qr_code_2_rounded;
+    return order.status == PaymentStatus.paid
+        ? Icons.verified_rounded
+        : Icons.qr_code_scanner_rounded;
   }
 
   @override
   Widget build(BuildContext context) {
     final timeStr = DateFormat('h:mm a').format(order.placedAt);
-    return compact ? _buildCompact(timeStr) : _buildFull(timeStr);
+    return compact ? _buildCompact(timeStr) : _buildFull(context, timeStr);
   }
 
   // --------------------------------------------------------------------------
   // FULL CARD (active orders)
   // --------------------------------------------------------------------------
 
-  Widget _buildFull(String timeStr) {
+  Widget _buildFull(BuildContext context, String timeStr) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -116,7 +112,7 @@ class OrderChitCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.brandRed.withValues(alpha: 0.35),
+                        color: AppColors.brandRed.withValues(alpha: 0.4),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -161,7 +157,24 @@ class OrderChitCard extends StatelessWidget {
                             timeStr,
                             style: GoogleFonts.inter(
                               fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 3,
+                            height: 3,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.textFaint,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${order.items.length} items',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
                               color: AppColors.textSecondary,
                             ),
                           ),
@@ -171,28 +184,32 @@ class OrderChitCard extends StatelessWidget {
                   ),
                 ),
 
-                // Status Badge Pill
+                // Status Badge Chip
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: _statusBgColor,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: _statusColor.withValues(alpha: 0.40),
+                      color: _statusColor.withValues(alpha: 0.4),
                       width: 1,
                     ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(_statusIcon, size: 13, color: _statusColor),
+                      Icon(
+                        _statusIcon,
+                        size: 14,
+                        color: _statusColor,
+                      ),
                       const SizedBox(width: 5),
                       Text(
                         _statusLabel,
                         style: GoogleFonts.poppins(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
                           color: _statusColor,
                         ),
                       ),
@@ -316,104 +333,57 @@ class OrderChitCard extends StatelessWidget {
                   const SizedBox(height: 14),
                   Row(
                     children: [
-                      // Cash Toggle Button
-                      if (order.method == PaymentMethod.cash) ...[
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: onToggleCash,
-                            icon: Icon(
-                              order.status == PaymentStatus.paid
-                                  ? Icons.check_circle_rounded
-                                  : Icons.money_off_rounded,
-                              size: 18,
-                              color: order.status == PaymentStatus.paid
-                                  ? AppColors.cash
-                                  : AppColors.pending,
-                            ),
-                            label: Text(
-                              order.status == PaymentStatus.paid
-                                  ? 'Cash Paid'
-                                  : 'Mark Cash Paid',
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor:
-                                  order.status == PaymentStatus.paid
-                                      ? AppColors.cash
-                                      : AppColors.pending,
-                              side: BorderSide(
-                                color: order.status == PaymentStatus.paid
-                                    ? AppColors.cash
-                                    : AppColors.pending,
-                                width: 1.5,
-                              ),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                      ],
-
-                      // Complete CTA Button
+                      // Payment Verification Toggle Button (Cash or UPI)
                       Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [
-                                AppColors.brandRed,
-                                AppColors.brandOrange,
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(14),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.brandRed
-                                    .withValues(alpha: 0.35),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+                        child: OutlinedButton.icon(
+                          onPressed: onToggleCash,
+                          icon: Icon(
+                            order.status == PaymentStatus.paid
+                                ? Icons.check_circle_rounded
+                                : (order.method == PaymentMethod.cash
+                                    ? Icons.payments_outlined
+                                    : Icons.qr_code_rounded),
+                            size: 18,
+                            color: order.status == PaymentStatus.paid
+                                ? AppColors.paid
+                                : AppColors.pending,
                           ),
-                          child: Material(
-                            color: Colors.transparent,
-                            borderRadius: BorderRadius.circular(14),
-                            child: InkWell(
+                          label: Text(
+                            order.status == PaymentStatus.paid
+                                ? (order.method == PaymentMethod.cash
+                                    ? 'Cash Paid'
+                                    : 'UPI Verified')
+                                : (order.method == PaymentMethod.cash
+                                    ? 'Mark Cash Paid'
+                                    : 'Verify UPI Paid'),
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: order.status == PaymentStatus.paid
+                                ? AppColors.paid
+                                : AppColors.pending,
+                            side: BorderSide(
+                              color: order.status == PaymentStatus.paid
+                                  ? AppColors.paid
+                                  : AppColors.pending,
+                              width: 1.5,
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
-                              onTap: onComplete,
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(
-                                      Icons.check_circle_rounded,
-                                      color: Colors.white,
-                                      size: 18,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'Mark Fulfilling Done',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
                             ),
                           ),
                         ),
+                      ),
+                      const SizedBox(width: 10),
+
+                      // Complete CTA Button (Locked if Cash is unpaid)
+                      Expanded(
+                        child: _buildCompleteButton(context),
                       ),
                     ],
                   ),
@@ -422,6 +392,99 @@ class OrderChitCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCompleteButton(BuildContext context) {
+    final bool isUnpaid = order.status != PaymentStatus.paid;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: isUnpaid
+            ? const LinearGradient(
+                colors: [Color(0xFFBDBDBD), Color(0xFF9E9E9E)],
+              )
+            : const LinearGradient(
+                colors: [AppColors.brandRed, AppColors.brandOrange],
+              ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: isUnpaid
+            ? []
+            : [
+                BoxShadow(
+                  color: AppColors.brandRed.withValues(alpha: 0.35),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () {
+            if (isUnpaid) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              final payLabel = order.method == PaymentMethod.cash
+                  ? 'Collect ₹${order.total.toStringAsFixed(0)} cash and tap "Mark Cash Paid"'
+                  : 'Verify UPI payment of ₹${order.total.toStringAsFixed(0)} and tap "Verify UPI Paid"';
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded,
+                          color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '$payLabel before fulfilling!',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: AppColors.brandRed,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+              return;
+            }
+            onComplete?.call();
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  isUnpaid
+                      ? Icons.lock_outline_rounded
+                      : Icons.check_circle_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  isUnpaid ? 'Payment Pending' : 'Mark Done',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

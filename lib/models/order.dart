@@ -1,6 +1,6 @@
 enum PaymentMethod { upi, cash }
 
-enum PaymentStatus { pendingUpi, paid }
+enum PaymentStatus { pending, paid, pendingUpi }
 
 enum OrderStage { active, completed }
 
@@ -51,15 +51,14 @@ class FoodOrder {
     required this.method,
     PaymentStatus? status,
     this.completedAt,
-  }) : status = status ??
-            (method == PaymentMethod.cash
-                ? PaymentStatus.pendingUpi
-                : PaymentStatus.paid);
+  }) : status = status ?? PaymentStatus.pending;
 
   double get total => items.fold(0, (sum, item) => sum + item.lineTotal);
 
   OrderStage get stage =>
       completedAt == null ? OrderStage.active : OrderStage.completed;
+
+  bool get isPaid => status == PaymentStatus.paid;
 
   bool get isCashPaid =>
       method == PaymentMethod.cash && status == PaymentStatus.paid;
@@ -70,7 +69,7 @@ class FoodOrder {
         'items': items.map((i) => i.toJson()).toList(),
         'placedAt': placedAt.toIso8601String(),
         'method': method.name,
-        'status': status.name,
+        'status': status == PaymentStatus.paid ? 'paid' : 'pending',
         'completedAt': completedAt?.toIso8601String(),
       };
 
@@ -88,7 +87,7 @@ class FoodOrder {
             : PaymentMethod.upi,
         status: (json['status'] as String?) == 'paid'
             ? PaymentStatus.paid
-            : PaymentStatus.pendingUpi,
+            : PaymentStatus.pending,
         completedAt: json['completedAt'] != null
             ? DateTime.tryParse(json['completedAt'] as String)
             : null,
