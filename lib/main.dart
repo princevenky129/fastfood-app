@@ -7,11 +7,8 @@ import 'services/auth_service.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  if (!kIsWeb) {
-    await NotificationService.instance.initialize();
-  }
   runApp(const FastFoodApp());
 }
 
@@ -30,6 +27,9 @@ class _FastFoodAppState extends State<FastFoodApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (!kIsWeb) {
+      NotificationService.instance.initialize();
+    }
     _checkAuthStatus();
   }
 
