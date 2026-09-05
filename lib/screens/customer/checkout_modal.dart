@@ -62,7 +62,7 @@ class _CheckoutModalState extends State<CheckoutModal> {
     }
 
     // Submit order to shared kitchen queue & return created order
-    final newOrder = repo.submitOrder(items, _selectedMethod);
+    final newOrder = await repo.submitOrder(items, _selectedMethod);
 
     if (!mounted) return;
     Navigator.pop(context, newOrder);

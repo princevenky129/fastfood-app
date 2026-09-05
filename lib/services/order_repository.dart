@@ -15,7 +15,6 @@ class OrderRepository {
 
   final List<FoodOrder> _orders = [];
   final _controller = StreamController<List<FoodOrder>>.broadcast();
-  int _tokenCounter = 0;
   bool _isSyncing = false;
 
   List<FoodOrder> get allOrders => List.unmodifiable(_orders);
@@ -40,38 +39,31 @@ class OrderRepository {
       final response = await http
           .get(Uri.parse('$_dbBaseUrl/orders.json'))
           .timeout(const Duration(seconds: 4));
-      if (response.statusCode == 200 && response.body != 'null') {
-        final Map<String, dynamic> data = jsonDecode(response.body);
-        final List<FoodOrder> remoteOrders = [];
-
-        data.forEach((key, value) {
-          if (value is Map<String, dynamic>) {
-            try {
-              remoteOrders.add(FoodOrder.fromJson(value));
-            } catch (_) {}
+      if (response.statusCode == 200) {
+        if (response.body == 'null' ||
+            response.body.isEmpty ||
+            response.body == '{}') {
+          if (_orders.isNotEmpty) {
+            _orders.clear();
+            _emit();
           }
-        });
+        } else {
+          final Map<String, dynamic> data = jsonDecode(response.body);
+          final List<FoodOrder> remoteOrders = [];
 
-        if (remoteOrders.isNotEmpty) {
-          // Sort by token number or placedAt
-          remoteOrders.sort((a, b) => a.tokenNumber.compareTo(b.tokenNumber));
-
-          // Merge local orders with remote orders
-          for (final ro in remoteOrders) {
-            final idx = _orders.indexWhere((o) => o.id == ro.id);
-            if (idx >= 0) {
-              _orders[idx] = ro;
-            } else {
-              _orders.add(ro);
+          data.forEach((key, value) {
+            if (value is Map<String, dynamic>) {
+              try {
+                remoteOrders.add(FoodOrder.fromJson(value));
+              } catch (_) {}
             }
-          }
+          });
 
-          // Update token counter strictly to highest token number found
-          final maxToken = _orders.fold<int>(
-              0, (maxVal, o) => o.tokenNumber > maxVal ? o.tokenNumber : maxVal);
-          if (maxToken > _tokenCounter) {
-            _tokenCounter = maxToken;
-          }
+          // Sort by placedAt
+          remoteOrders.sort((a, b) => a.placedAt.compareTo(b.placedAt));
+
+          _orders.clear();
+          _orders.addAll(remoteOrders);
 
           _emit();
         }
@@ -111,30 +103,51 @@ class OrderRepository {
     _pushToCloud(order);
   }
 
+  /// Calculates the next sequential token strictly for TODAY (P1, P2, P3...).
+  /// Automatically resets to P1 on each new calendar date.
+  int getNextTokenForToday() {
+    final now = DateTime.now();
+    final todayOrders = _orders.where((o) =>
+        o.placedAt.year == now.year &&
+        o.placedAt.month == now.month &&
+        o.placedAt.day == now.day).toList();
+
+    if (todayOrders.isEmpty) return 1;
+
+    final maxToken = todayOrders.fold<int>(
+        0, (maxVal, o) => o.tokenNumber > maxVal ? o.tokenNumber : maxVal);
+    return maxToken + 1;
+  }
+
   /// Used by customer flow on web/mobile to push a freshly placed order in.
-  /// Tokens increment sequentially: P1, P2, P3... Pn
-  FoodOrder submitOrder(List<OrderLineItem> items, PaymentMethod method) {
-    _tokenCounter += 1;
+  /// Tokens are strictly daily sequential: P1, P2, P3... Pn for each day.
+  Future<FoodOrder> submitOrder(
+      List<OrderLineItem> items, PaymentMethod method) async {
+    await _fetchFromCloud();
+
+    final nextToken = getNextTokenForToday();
+    final now = DateTime.now();
+
     final newOrder = FoodOrder(
-      id: 'o${_tokenCounter}_${DateTime.now().millisecondsSinceEpoch}',
-      tokenNumber: _tokenCounter,
+      id: 'o_${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_p${nextToken}_${now.millisecondsSinceEpoch}',
+      tokenNumber: nextToken,
       items: items,
-      placedAt: DateTime.now(),
+      placedAt: now,
       method: method,
     );
+
     _orders.add(newOrder);
     _emit();
 
     // Immediately push new order to cloud so admin app receives it in real time
-    _pushToCloud(newOrder);
+    await _pushToCloud(newOrder);
 
     return newOrder;
   }
 
-  /// Utility to clear old test orders from Firebase and reset tokens to 0
+  /// Utility to clear all orders from Firebase and reset queue
   Future<void> clearAllOrders() async {
     _orders.clear();
-    _tokenCounter = 0;
     _emit();
     try {
       await http.delete(Uri.parse('$_dbBaseUrl/orders.json'));
