@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../models/order.dart';
+import '../../services/notification_service.dart';
 import '../../services/order_repository.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/order_chit_card.dart';
@@ -23,11 +24,20 @@ class _OrderQueueScreenState extends State<OrderQueueScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    NotificationService.instance.isViewingActiveQueue = true;
+    _tabController.addListener(_handleTabChange);
+  }
+
+  void _handleTabChange() {
+    NotificationService.instance.isViewingActiveQueue =
+        (_tabController.index == 0);
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
+    NotificationService.instance.isViewingActiveQueue = false;
     super.dispose();
   }
 

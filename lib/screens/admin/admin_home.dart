@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../services/notification_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/shop_qr_dialog.dart';
 import 'menu_management_screen.dart';
@@ -25,6 +26,9 @@ class _AdminHomeState extends State<AdminHome> {
 
   void _onTabTapped(int index) {
     setState(() => _selectedIndex = index);
+    if (index == 0) {
+      NotificationService.instance.isViewingActiveQueue = false;
+    }
   }
 
   @override

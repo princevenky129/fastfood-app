@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/order.dart';
+import 'notification_service.dart';
 
 class OrderRepository {
   static const String _dbBaseUrl =
@@ -16,6 +17,7 @@ class OrderRepository {
   final List<FoodOrder> _orders = [];
   final _controller = StreamController<List<FoodOrder>>.broadcast();
   bool _isSyncing = false;
+  bool _hasInitializedNotifs = false;
 
   List<FoodOrder> get allOrders => List.unmodifiable(_orders);
   Stream<List<FoodOrder>> get ordersStream => _controller.stream;
@@ -61,6 +63,14 @@ class OrderRepository {
 
           // Sort by placedAt
           remoteOrders.sort((a, b) => a.placedAt.compareTo(b.placedAt));
+
+          // Handle system notification alerts for incoming orders
+          if (!_hasInitializedNotifs) {
+            _hasInitializedNotifs = true;
+            NotificationService.instance.seedExistingOrders(remoteOrders);
+          } else {
+            NotificationService.instance.handleIncomingOrders(remoteOrders);
+          }
 
           _orders.clear();
           _orders.addAll(remoteOrders);

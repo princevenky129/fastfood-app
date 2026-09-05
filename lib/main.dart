@@ -4,9 +4,14 @@ import 'screens/admin/admin_home.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/customer/customer_home.dart';
 import 'services/auth_service.dart';
+import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  if (!kIsWeb) {
+    await NotificationService.instance.initialize();
+  }
   runApp(const FastFoodApp());
 }
 
@@ -17,14 +22,31 @@ class FastFoodApp extends StatefulWidget {
   State<FastFoodApp> createState() => _FastFoodAppState();
 }
 
-class _FastFoodAppState extends State<FastFoodApp> {
+class _FastFoodAppState extends State<FastFoodApp> with WidgetsBindingObserver {
   bool _isLoggedIn = false;
   bool _isCheckingAuth = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkAuthStatus();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      NotificationService.instance.isAppInForeground = true;
+    } else {
+      NotificationService.instance.isAppInForeground = false;
+    }
   }
 
   Future<void> _checkAuthStatus() async {
